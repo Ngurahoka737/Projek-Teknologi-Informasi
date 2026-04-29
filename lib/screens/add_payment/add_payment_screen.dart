@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../providers/debt_provider.dart';
+import '../../providers/debt_notifier.dart';
 import '../../data/models/debt_model.dart';
 
-class AddPaymentScreen extends StatefulWidget {
+class AddPaymentScreen extends ConsumerStatefulWidget {
   final int debtId;
 
   const AddPaymentScreen({super.key, required this.debtId});
 
   @override
-  State<AddPaymentScreen> createState() => _AddPaymentScreenState();
+  ConsumerState<AddPaymentScreen> createState() => _AddPaymentScreenState();
 }
 
-class _AddPaymentScreenState extends State<AddPaymentScreen> {
+class _AddPaymentScreenState extends ConsumerState<AddPaymentScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _amountController = TextEditingController();
@@ -56,11 +56,9 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
     });
 
     try {
-      final provider = Provider.of<DebtProvider>(context, listen: false);
+      final provider = ref.read(debtNotifierProvider);
 
-      final debt = provider.debts.firstWhere(
-        (item) => item.id == widget.debtId,
-      );
+      final debt = provider.firstWhere((item) => item.id == widget.debtId);
 
       final amount = double.tryParse(_amountController.text) ?? 0;
 
@@ -72,11 +70,13 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
         throw Exception("Nominal melebihi sisa hutang");
       }
 
-      await provider.addPayment(
-        debtId: widget.debtId,
-        amount: amount,
-        date: _selectedDate,
-      );
+      await ref
+          .read(debtNotifierProvider.notifier)
+          .addPayment(
+            debtId: widget.debtId,
+            amount: amount,
+            date: _selectedDate,
+          );
 
       if (!mounted) return;
 
@@ -108,9 +108,8 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<DebtProvider>(context);
-
-    final DebtModel debt = provider.debts.firstWhere(
+    final provider = ref.watch(debtNotifierProvider);
+    final DebtModel debt = provider.firstWhere(
       (item) => item.id == widget.debtId,
     );
 

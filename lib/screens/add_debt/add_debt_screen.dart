@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../providers/debt_provider.dart';
+import '../../providers/debt_notifier.dart';
 import '../../data/models/debt_model.dart';
 import '../../data/services/notification_service.dart';
 
-class AddDebtScreen extends StatefulWidget {
+class AddDebtScreen extends ConsumerStatefulWidget {
   final DebtModel? debt;
 
   const AddDebtScreen({super.key, this.debt});
 
   @override
-  State<AddDebtScreen> createState() => _AddDebtScreenState();
+  ConsumerState<AddDebtScreen> createState() => _AddDebtScreenState();
 }
 
-class _AddDebtScreenState extends State<AddDebtScreen> {
+class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _titleController = TextEditingController();
@@ -119,8 +119,6 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
     });
 
     try {
-      final provider = Provider.of<DebtProvider>(context, listen: false);
-
       final title = _titleController.text.trim();
 
       final amount = double.tryParse(_amountController.text) ?? 0;
@@ -147,18 +145,18 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
       }
 
       if (isEdit) {
-        await provider.updateDebt(
-          id: widget.debt!.id!,
-          title: title,
-          totalAmount: amount,
-          dueDate: dueDate,
-        );
+        await ref
+            .read(debtNotifierProvider.notifier)
+            .updateDebt(
+              id: widget.debt!.id!,
+              title: title,
+              totalAmount: amount,
+              dueDate: dueDate,
+            );
       } else {
-        await provider.addDebt(
-          title: title,
-          totalAmount: amount,
-          dueDate: dueDate,
-        );
+        await ref
+            .read(debtNotifierProvider.notifier)
+            .addDebt(title: title, totalAmount: amount, dueDate: dueDate);
 
         await _scheduleReminders(title, dueDate);
       }

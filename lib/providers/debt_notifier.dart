@@ -33,13 +33,25 @@ class DebtNotifier extends StateNotifier<List<DebtModel>> {
     state = tempList;
   }
 
-  Future<void> addDebt({required String title, required double totalAmount, required DateTime dueDate}) async {
-    final newDebt = DebtModel(title: title, totalAmount: totalAmount, dueDate: dueDate);
+  Future<void> addDebt({
+    required String title,
+    required double totalAmount,
+    required DateTime dueDate,
+  }) async {
+    final newDebt = DebtModel(
+      title: title,
+      totalAmount: totalAmount,
+      dueDate: dueDate,
+    );
     await DBService.instance.insertDebt(newDebt.toMap());
     await loadDebts();
   }
 
-  Future<void> addPayment({required int debtId, required double amount, required DateTime date}) async {
+  Future<void> addPayment({
+    required int debtId,
+    required double amount,
+    required DateTime date,
+  }) async {
     final payment = PaymentModel(debtId: debtId, amount: amount, date: date);
     await DBService.instance.insertPayment(payment.toMap());
     await loadDebts();
@@ -55,15 +67,30 @@ class DebtNotifier extends StateNotifier<List<DebtModel>> {
     await loadDebts();
   }
 
-  Future<void> updateDebt({required int id, required String title, required double totalAmount, required DateTime dueDate}) async {
+  Future<void> updateDebt({
+    required int id,
+    required String title,
+    required double totalAmount,
+    required DateTime dueDate,
+  }) async {
     final debt = state.firstWhere((item) => item.id == id);
     if (totalAmount < debt.totalPaid) {
-      throw Exception('Total hutang tidak boleh lebih kecil dari jumlah yang sudah dibayar (${debt.totalPaid.toStringAsFixed(0)})');
+      throw Exception(
+        'Total hutang tidak boleh lebih kecil dari jumlah yang sudah dibayar (${debt.totalPaid.toStringAsFixed(0)})',
+      );
     }
 
-    await DBService.instance.updateDebt(id: id, title: title, totalAmount: totalAmount, dueDate: dueDate);
+    await DBService.instance.updateDebt(
+      id: id,
+      title: title,
+      totalAmount: totalAmount,
+      dueDate: dueDate,
+    );
     await loadDebts();
   }
 }
 
-final debtNotifierProvider = StateNotifierProvider<DebtNotifier, List<DebtModel>>((ref) => DebtNotifier());
+final debtNotifierProvider =
+    StateNotifierProvider<DebtNotifier, List<DebtModel>>(
+      (ref) => DebtNotifier(),
+    );

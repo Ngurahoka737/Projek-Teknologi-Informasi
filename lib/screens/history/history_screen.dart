@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../providers/debt_provider.dart';
+import '../../providers/debt_notifier.dart';
 import '../../data/models/debt_model.dart';
 import '../detail/debt_detail_screen.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final provider = Provider.of<DebtProvider>(context);
-
-    final paidOffDebts = provider.debts.where((d) => d.remaining <= 0).toList();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final provider = ref.watch(debtNotifierProvider);
+    final paidOffDebts = provider.where((d) => d.remaining <= 0).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text("Riwayat Lunas"), centerTitle: true),

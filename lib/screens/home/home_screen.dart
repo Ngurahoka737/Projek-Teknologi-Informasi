@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 
-import '../../providers/debt_provider.dart';
+import '../../providers/debt_notifier.dart';
 import '../../widgets/debt_card.dart';
 import '../add_debt/add_debt_screen.dart';
 import '../../data/services/notification_service.dart';
 import '../../data/services/pdf_service.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   final rupiah = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp ',
@@ -30,15 +30,14 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
-      Provider.of<DebtProvider>(context, listen: false).loadDebts();
+      ref.read(debtNotifierProvider.notifier).loadDebts();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<DebtProvider>(context);
-
-    final activeDebts = provider.debts.where((d) => d.remaining > 0).toList();
+    final provider = ref.watch(debtNotifierProvider);
+    final activeDebts = provider.where((d) => d.remaining > 0).toList();
 
     return Scaffold(
       appBar: AppBar(

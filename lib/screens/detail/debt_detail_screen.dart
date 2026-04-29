@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/debt_model.dart';
-import '../../providers/debt_provider.dart';
+import '../../providers/debt_notifier.dart';
 import '../add_debt/add_debt_screen.dart';
 
-class DebtDetailScreen extends StatelessWidget {
+class DebtDetailScreen extends ConsumerWidget {
   final DebtModel debt;
 
   const DebtDetailScreen({super.key, required this.debt});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final rupiah = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
@@ -225,10 +225,9 @@ class DebtDetailScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () async {
-              await Provider.of<DebtProvider>(
-                context,
-                listen: false,
-              ).deleteDebt(debt.id!);
+              await ref
+                  .read(debtNotifierProvider.notifier)
+                  .deleteDebt(debt.id!);
 
               if (!context.mounted) return;
 
@@ -268,10 +267,9 @@ class DebtDetailScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () async {
-              await Provider.of<DebtProvider>(
-                context,
-                listen: false,
-              ).deletePayment(paymentId);
+              await ref
+                  .read(debtNotifierProvider.notifier)
+                  .deletePayment(paymentId);
 
               if (!context.mounted) return;
 
