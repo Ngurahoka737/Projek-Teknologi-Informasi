@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'screens/splash_screen.dart';
 
 import 'data/services/notification_service.dart';
 
 import 'di/injection.dart';
+import 'presentation/auth/auth_gate.dart';
 
 // Providers migrated to Riverpod
 
@@ -81,7 +81,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      home: const SplashScreen(),
+      home: const AuthGate(),
     );
   }
 }

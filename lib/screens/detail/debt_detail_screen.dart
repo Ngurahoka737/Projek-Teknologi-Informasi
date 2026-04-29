@@ -41,7 +41,7 @@ class DebtDetailScreen extends ConsumerWidget {
 
           IconButton(
             onPressed: () {
-              _deleteDialog(context);
+              _deleteDialog(context, ref);
             },
             icon: const Icon(Icons.delete, color: Colors.red),
           ),
@@ -193,7 +193,7 @@ class DebtDetailScreen extends ConsumerWidget {
                             trailing: IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () {
-                                _deletePaymentDialog(context, payment.id!);
+                                _deletePaymentDialog(context, ref, payment.id!);
                               },
                             ),
                           ),
@@ -210,7 +210,7 @@ class DebtDetailScreen extends ConsumerWidget {
   // =========================
   // DIALOG HAPUS
   // =========================
-  void _deleteDialog(BuildContext context) {
+  void _deleteDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -252,7 +252,11 @@ class DebtDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _deletePaymentDialog(BuildContext context, int paymentId) {
+  void _deletePaymentDialog(
+    BuildContext context,
+    WidgetRef ref,
+    int paymentId,
+  ) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(

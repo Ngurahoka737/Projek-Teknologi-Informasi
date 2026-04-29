@@ -36,8 +36,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = ref.watch(debtNotifierProvider);
-    final activeDebts = provider.where((d) => d.remaining > 0).toList();
+    final debts = ref.watch(debtNotifierProvider);
+    final activeDebts = debts.where((d) => d.remaining > 0).toList();
+
+    final totalAllDebt = debts.fold(0.0, (sum, item) => sum + item.totalAmount);
+    final totalAllPaid = debts.fold(0.0, (sum, item) => sum + item.totalPaid);
+    final totalAllRemaining = debts.fold(
+      0.0,
+      (sum, item) => sum + item.remaining,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -59,7 +66,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // 📄 EXPORT PDF
           IconButton(
             onPressed: () async {
-              final file = await PdfService.generateDebtReport(provider.debts);
+              final file = await PdfService.generateDebtReport(debts);
 
               await Printing.layoutPdf(onLayout: (_) => file.readAsBytes());
             },
@@ -92,7 +99,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const SizedBox(height: 6),
 
                 Text(
-                  rupiah.format(provider.totalAllDebt),
+                  rupiah.format(totalAllDebt),
                   style: const TextStyle(
                     fontSize: 26,
                     color: Colors.white,
@@ -103,14 +110,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const SizedBox(height: 16),
 
                 Text(
-                  "Sudah Dibayar: ${rupiah.format(provider.totalAllPaid)}",
+                  "Sudah Dibayar: ${rupiah.format(totalAllPaid)}",
                   style: const TextStyle(color: Colors.white),
                 ),
 
                 const SizedBox(height: 6),
 
                 Text(
-                  "Sisa: ${rupiah.format(provider.totalAllRemaining)}",
+                  "Sisa: ${rupiah.format(totalAllRemaining)}",
                   style: const TextStyle(color: Colors.white),
                 ),
               ],
