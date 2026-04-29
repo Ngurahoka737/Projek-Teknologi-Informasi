@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'screens/splash_screen.dart';
 
 import 'data/services/notification_service.dart';
+
+import 'di/injection.dart';
 
 // Provider
 import 'providers/debt_provider.dart';
@@ -13,13 +16,16 @@ import 'providers/debt_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  //INIT FORMAT INDONESIA
+  // INIT DEPENDENCIES (DI)
+  await initDependencies();
+
+  // INIT FORMAT INDONESIA
   await initializeDateFormatting('id_ID', null);
 
-  //INIT NOTIFIKASI
+  // INIT NOTIFIKASI
   await NotificationService.init();
 
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
