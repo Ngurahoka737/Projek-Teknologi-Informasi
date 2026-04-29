@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "784871320809",
+    "project_id": "ngurah-744a9",
+    "storage_bucket": "ngurah-744a9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:784871320809:android:0f8ef39bf05116a9c75478",
+        "android_client_info": {
+          "package_name": "ngurah.neistat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhxJx0FLkqq84JlmIV19zMgyD31ObRN9A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
