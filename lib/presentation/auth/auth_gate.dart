@@ -12,7 +12,6 @@ class AuthGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bootstrapAsync = ref.watch(firebaseBootstrapProvider);
-    final authState = ref.watch(authStateStreamProvider);
 
     return bootstrapAsync.when(
       loading: () =>
@@ -20,6 +19,7 @@ class AuthGate extends ConsumerWidget {
       error: (error, _) =>
           Scaffold(body: Center(child: Text('Firebase init gagal: $error'))),
       data: (_) {
+        final authState = ref.watch(authStateStreamProvider);
         return authState.when(
           loading: () =>
               const Scaffold(body: Center(child: CircularProgressIndicator())),

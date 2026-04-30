@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
+import '../../core/formatters/thousands_separator_input_formatter.dart';
 import '../../providers/debt_notifier.dart';
 import '../../data/models/debt_model.dart';
 import '../../data/services/notification_service.dart';
@@ -20,11 +22,12 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
 
   final _titleController = TextEditingController();
 
-  final _amountController = TextEditingController();
+  final _monthsController = TextEditingController();
+  final _monthlyAmountController = TextEditingController();
 
-  final dateFormat = DateFormat('dd MMM yyyy', 'id_ID');
+  final amountFormat = NumberFormat.decimalPattern('id_ID');
 
-  DateTime? _selectedDate;
+  int _dueDay = 1;
 
   bool _isLoading = false;
 
@@ -37,27 +40,11 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
     if (isEdit) {
       _titleController.text = widget.debt!.title;
 
-      _amountController.text = widget.debt!.totalAmount.toStringAsFixed(0);
-
-      _selectedDate = widget.debt!.dueDate;
-    }
-  }
-
-  // ======================
-  // PICK DATE
-  // ======================
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
+      _monthsController.text = widget.debt!.months.toString();
+      _monthlyAmountController.text = amountFormat.format(
+        widget.debt!.monthlyAmount.round(),
+      );
+      _dueDay = widget.debt!.dueDay;
     }
   }
 
@@ -99,18 +86,22 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
     }
   }
 
+  DateTime _nextDueDate(int dueDay) {
+    final now = DateTime.now();
+    final safeDay = dueDay.clamp(1, 28).toInt();
+    final candidate = DateTime(now.year, now.month, safeDay);
+    if (candidate.isAfter(now) || candidate.isAtSameMomentAs(now)) {
+      return candidate;
+    }
+    final nextMonth = DateTime(now.year, now.month + 1, safeDay);
+    return nextMonth;
+  }
+
   // ======================
   // SUBMIT
   // ======================
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Tanggal jatuh tempo wajib dipilih")),
-      );
       return;
     }
 
@@ -120,15 +111,15 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
 
     try {
       final title = _titleController.text.trim();
-
-      final amount = double.tryParse(_amountController.text) ?? 0;
-
-      final dueDate = _selectedDate!;
+      final months = int.tryParse(_monthsController.text) ?? 0;
+      final monthlyAmount = parseFormattedNumber(_monthlyAmountController.text);
+      final dueDate = _nextDueDate(_dueDay);
+      final totalAmount = months * monthlyAmount;
 
       // ======================
       // VALIDASI EDIT
       // ======================
-      if (isEdit && amount < widget.debt!.totalPaid) {
+      if (isEdit && totalAmount < widget.debt!.totalPaid) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -150,13 +141,21 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
             .updateDebt(
               id: widget.debt!.id!,
               title: title,
-              totalAmount: amount,
+              months: months,
+              monthlyAmount: monthlyAmount,
+              dueDay: _dueDay,
               dueDate: dueDate,
             );
       } else {
         await ref
             .read(debtNotifierProvider.notifier)
-            .addDebt(title: title, totalAmount: amount, dueDate: dueDate);
+            .addDebt(
+              title: title,
+              months: months,
+              monthlyAmount: monthlyAmount,
+              dueDay: _dueDay,
+              dueDate: dueDate,
+            );
 
         await _scheduleReminders(title, dueDate);
       }
@@ -190,7 +189,8 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
   @override
   void dispose() {
     _titleController.dispose();
-    _amountController.dispose();
+    _monthsController.dispose();
+    _monthlyAmountController.dispose();
     super.dispose();
   }
 
@@ -239,27 +239,52 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
                       const SizedBox(height: 16),
 
                       // ==================
-                      // TOTAL HUTANG
+                      // TENOR (BULAN)
                       // ==================
                       TextFormField(
-                        controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
+                        controller: _monthsController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                         decoration: const InputDecoration(
-                          labelText: "Total Hutang",
+                          labelText: "Tenor (bulan)",
+                          prefixIcon: Icon(Icons.calendar_month),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Tenor wajib diisi";
+                          }
+
+                          final months = int.tryParse(value) ?? 0;
+
+                          if (months <= 0) {
+                            return "Tenor minimal 1 bulan";
+                          }
+
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ==================
+                      // CICILAN PER BULAN
+                      // ==================
+                      TextFormField(
+                        controller: _monthlyAmountController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [ThousandsSeparatorInputFormatter()],
+                        decoration: const InputDecoration(
+                          labelText: "Cicilan per bulan",
                           prefixIcon: Icon(Icons.payments),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return "Total hutang wajib diisi";
+                            return "Nominal cicilan wajib diisi";
                           }
 
-                          final amount = double.tryParse(value);
-
-                          if (amount == null) {
-                            return "Masukkan angka valid";
-                          }
+                          final amount = parseFormattedNumber(value);
 
                           if (amount <= 0) {
                             return "Nominal harus lebih dari 0";
@@ -272,36 +297,27 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
                       const SizedBox(height: 16),
 
                       // ==================
-                      // DATE PICKER
+                      // JATUH TEMPO TANGGAL
                       // ==================
-                      InkWell(
-                        onTap: _pickDate,
-                        borderRadius: BorderRadius.circular(14),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black12),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.calendar_month),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _selectedDate == null
-                                      ? "Pilih Tanggal Jatuh Tempo"
-                                      : dateFormat.format(_selectedDate!),
-                                ),
-                              ),
-                              const Icon(Icons.arrow_drop_down),
-                            ],
-                          ),
+                      DropdownButtonFormField<int>(
+                        value: _dueDay,
+                        decoration: const InputDecoration(
+                          labelText: "Jatuh tempo tiap tanggal",
+                          prefixIcon: Icon(Icons.event),
                         ),
+                        items: List.generate(28, (index) {
+                          final day = index + 1;
+                          return DropdownMenuItem(
+                            value: day,
+                            child: Text('Tanggal $day'),
+                          );
+                        }),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() {
+                            _dueDay = value;
+                          });
+                        },
                       ),
 
                       const SizedBox(height: 24),

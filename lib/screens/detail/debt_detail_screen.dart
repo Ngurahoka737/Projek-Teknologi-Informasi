@@ -137,6 +137,26 @@ class DebtDetailScreen extends ConsumerWidget {
                     const Divider(),
 
                     _item(
+                      Icons.calendar_month,
+                      "Tenor",
+                      "${debt.months} bulan",
+                    ),
+
+                    const Divider(),
+
+                    _item(
+                      Icons.payments_outlined,
+                      "Cicilan / bulan",
+                      rupiah.format(debt.monthlyAmount),
+                    ),
+
+                    const Divider(),
+
+                    _item(Icons.event, "Jatuh tempo", "Tanggal ${debt.dueDay}"),
+
+                    const Divider(),
+
+                    _item(
                       Icons.check_circle,
                       "Sudah Dibayar",
                       rupiah.format(debt.totalPaid),
@@ -193,7 +213,12 @@ class DebtDetailScreen extends ConsumerWidget {
                             trailing: IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () {
-                                _deletePaymentDialog(context, ref, payment.id!);
+                                _deletePaymentDialog(
+                                  context,
+                                  ref,
+                                  debt.id!,
+                                  payment.id!,
+                                );
                               },
                             ),
                           ),
@@ -255,6 +280,7 @@ class DebtDetailScreen extends ConsumerWidget {
   void _deletePaymentDialog(
     BuildContext context,
     WidgetRef ref,
+    int debtId,
     int paymentId,
   ) {
     showDialog(
@@ -273,7 +299,7 @@ class DebtDetailScreen extends ConsumerWidget {
             onPressed: () async {
               await ref
                   .read(debtNotifierProvider.notifier)
-                  .deletePayment(paymentId);
+                  .deletePayment(debtId: debtId, paymentId: paymentId);
 
               if (!context.mounted) return;
 

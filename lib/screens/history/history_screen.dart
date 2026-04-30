@@ -11,6 +11,8 @@ class HistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final provider = ref.watch(debtNotifierProvider);
     final paidOffDebts = provider.where((d) => d.remaining <= 0).toList();
 
@@ -18,7 +20,7 @@ class HistoryScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text("Riwayat Lunas"), centerTitle: true),
 
       body: paidOffDebts.isEmpty
-          ? _buildEmpty()
+          ? _buildEmpty(textTheme, colors)
           : ListView.builder(
               padding: const EdgeInsets.all(14),
               itemCount: paidOffDebts.length,
@@ -29,18 +31,45 @@ class HistoryScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(TextTheme textTheme, ColorScheme colors) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.check_circle, size: 70, color: Colors.green),
-          SizedBox(height: 14),
-          Text(
-            "Belum ada hutang lunas",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-        ],
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xffe5e7eb)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: colors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.check_circle, color: colors.primary),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Belum ada hutang lunas",
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Selesaikan cicilan untuk melihat riwayat di sini.",
+              textAlign: TextAlign.center,
+              style: textTheme.bodySmall?.copyWith(
+                color: const Color(0xff6b7280),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -86,7 +115,7 @@ class HistoryScreen extends ConsumerWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green,
+                      color: const Color(0xff0f766e),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
@@ -107,7 +136,7 @@ class HistoryScreen extends ConsumerWidget {
                 value: 1,
                 minHeight: 8,
                 borderRadius: BorderRadius.circular(20),
-                color: Colors.green,
+                color: const Color(0xff0f766e),
               ),
 
               const SizedBox(height: 14),

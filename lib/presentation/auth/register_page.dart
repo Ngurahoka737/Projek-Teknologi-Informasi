@@ -61,7 +61,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(labelText: 'Email'),
+                onFieldSubmitted: (_) {
+                  FocusScope.of(context).nextFocus();
+                },
                 validator: (value) =>
                     value == null || value.isEmpty ? 'Email wajib diisi' : null,
               ),
@@ -69,7 +73,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
+                textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(labelText: 'Password'),
+                onFieldSubmitted: (_) => _submit(),
                 validator: (value) => value == null || value.length < 6
                     ? 'Password minimal 6 karakter'
                     : null,

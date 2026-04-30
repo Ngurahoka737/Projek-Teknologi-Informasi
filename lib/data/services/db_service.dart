@@ -4,8 +4,27 @@ import 'package:path/path.dart';
 class DBService {
   static final DBService instance = DBService._init();
   static Database? _database;
+  String _dbFileName = 'debt_manager_guest.db';
 
   DBService._init();
+
+  Future<void> configureForUser(String? uid) async {
+    final sanitizedUid = _sanitizeUid(uid);
+    final nextFileName = sanitizedUid == null || sanitizedUid.isEmpty
+        ? 'debt_manager_guest.db'
+        : 'debt_manager_$sanitizedUid.db';
+
+    if (nextFileName == _dbFileName) return;
+
+    await _database?.close();
+    _database = null;
+    _dbFileName = nextFileName;
+  }
+
+  String? _sanitizeUid(String? uid) {
+    if (uid == null) return null;
+    return uid.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+  }
 
   // ======================
   // INIT DATABASE
@@ -13,7 +32,7 @@ class DBService {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('debt_manager.db');
+    _database = await _initDB(_dbFileName);
     return _database!;
   }
 
@@ -21,7 +40,12 @@ class DBService {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _upgradeDB,
+    );
   }
 
   // ======================
@@ -34,6 +58,9 @@ class DBService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT,
         totalAmount REAL,
+        months INTEGER,
+        monthlyAmount REAL,
+        dueDay INTEGER,
         dueDate TEXT
       )
     ''');
@@ -48,6 +75,23 @@ class DBService {
     ''');
   }
 
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE debts ADD COLUMN months INTEGER DEFAULT 1');
+      await db.execute(
+        'ALTER TABLE debts ADD COLUMN monthlyAmount REAL DEFAULT 0',
+      );
+      await db.execute('ALTER TABLE debts ADD COLUMN dueDay INTEGER DEFAULT 1');
+
+      await db.execute(
+        'UPDATE debts SET monthlyAmount = totalAmount WHERE monthlyAmount = 0',
+      );
+      await db.execute(
+        "UPDATE debts SET dueDay = CAST(strftime('%d', dueDate) AS INTEGER) WHERE dueDate IS NOT NULL",
+      );
+    }
+  }
+
   // ======================
   // CRUD DEBTS
   // ======================
@@ -55,6 +99,11 @@ class DBService {
   Future<int> insertDebt(Map<String, dynamic> row) async {
     final db = await instance.database;
     return await db.insert('debts', row);
+  }
+
+  Future<void> upsertDebt(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    await db.insert('debts', row, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> getAllDebts() async {
@@ -74,6 +123,9 @@ class DBService {
     required int id,
     required String title,
     required double totalAmount,
+    required int months,
+    required double monthlyAmount,
+    required int dueDay,
     required DateTime dueDate,
   }) async {
     final db = await database;
@@ -83,6 +135,9 @@ class DBService {
       {
         'title': title,
         'totalAmount': totalAmount,
+        'months': months,
+        'monthlyAmount': monthlyAmount,
+        'dueDay': dueDay,
         'dueDate': dueDate.toIso8601String(),
       },
       where: 'id = ?',
@@ -97,6 +152,15 @@ class DBService {
   Future<int> insertPayment(Map<String, dynamic> row) async {
     final db = await instance.database;
     return await db.insert('payments', row);
+  }
+
+  Future<void> upsertPayment(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    await db.insert(
+      'payments',
+      row,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<void> deletePayment(int id) async {
@@ -114,5 +178,12 @@ class DBService {
       whereArgs: [debtId],
       orderBy: 'date DESC',
     );
+  }
+
+  Future<void> clearAll() async {
+    final db = await database;
+
+    await db.delete('payments');
+    await db.delete('debts');
   }
 }
