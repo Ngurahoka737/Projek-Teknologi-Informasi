@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../core/insights/debt_health.dart';
 import '../data/models/debt_model.dart';
 import 'debt_monthly_chart.dart';
 
@@ -21,17 +22,24 @@ class DebtInsightsCarousel extends StatefulWidget {
 }
 
 class _DebtInsightsCarouselState extends State<DebtInsightsCarousel> {
+  static const _pageCount = 3;
+  static const _slideInterval = Duration(seconds: 6);
+  static const _pauseDuration = Duration(seconds: 10);
+
   late final PageController _pageController;
   Timer? _timer;
   int _pageIndex = 0;
+  DateTime? _pausedUntil;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _timer = Timer.periodic(_slideInterval, (_) {
       if (!mounted) return;
-      final nextIndex = (_pageIndex + 1) % 2;
+      if (_isPaused()) return;
+
+      final nextIndex = (_pageIndex + 1) % _pageCount;
       _pageController.animateToPage(
         nextIndex,
         duration: const Duration(milliseconds: 350),
@@ -47,12 +55,29 @@ class _DebtInsightsCarouselState extends State<DebtInsightsCarousel> {
     super.dispose();
   }
 
+  bool _isPaused() {
+    final until = _pausedUntil;
+    if (until == null) return false;
+    return DateTime.now().isBefore(until);
+  }
+
+  void _pauseAutoSlide() {
+    _pausedUntil = DateTime.now().add(_pauseDuration);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final health = calculateDebtHealth(widget.debts);
+    final pages = [
+      DebtMonthlyChart(debts: widget.debts),
+      DebtRatioCard(debts: widget.debts, monthlyIncome: widget.monthlyIncome),
+      DebtHealthCard(health: health),
+    ];
+
     return Column(
       children: [
         SizedBox(
-          height: 260,
+          height: 300,
           child: PageView(
             controller: _pageController,
             onPageChanged: (index) {
@@ -60,19 +85,21 @@ class _DebtInsightsCarouselState extends State<DebtInsightsCarousel> {
                 _pageIndex = index;
               });
             },
-            children: [
-              DebtMonthlyChart(debts: widget.debts),
-              DebtRatioCard(
-                debts: widget.debts,
-                monthlyIncome: widget.monthlyIncome,
-              ),
-            ],
+            children: pages
+                .map(
+                  (child) => GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _pauseAutoSlide,
+                    child: child,
+                  ),
+                )
+                .toList(),
           ),
         ),
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(2, (index) {
+          children: List.generate(_pageCount, (index) {
             final isActive = index == _pageIndex;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 200),
@@ -119,7 +146,7 @@ class DebtRatioCard extends StatelessWidget {
     );
     final monthlyObligation = debts
         .where((item) => item.remaining > 0)
-        .fold<double>(0, (sum, item) => sum + item.monthlyAmount);
+        .fold<double>(0, (sum, item) => sum + item.monthlyAverage);
 
     final income = (monthlyIncome ?? 0).toDouble();
     final ratio = income > 0 ? (monthlyObligation / income) : 0.0;
@@ -206,5 +233,84 @@ class DebtRatioCard extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class DebtHealthCard extends StatelessWidget {
+  const DebtHealthCard({super.key, required this.health});
+
+  final DebtHealthResult health;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final healthColor = _healthColor(health.status);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xffe5e7eb)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Index Kesehatan Hutang',
+            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: healthColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${health.score} / 100',
+                  style: textTheme.labelMedium?.copyWith(
+                    color: healthColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                health.status,
+                style: textTheme.labelMedium?.copyWith(
+                  color: healthColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            health.insight,
+            style: textTheme.bodySmall?.copyWith(
+              color: const Color(0xff6b7280),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _healthColor(String status) {
+    switch (status) {
+      case 'Bahaya':
+        return const Color(0xffdc2626);
+      case 'Waspada':
+        return const Color(0xfff59e0b);
+      default:
+        return const Color(0xff16a34a);
+    }
   }
 }

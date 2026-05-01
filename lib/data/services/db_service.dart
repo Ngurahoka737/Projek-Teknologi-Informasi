@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -42,7 +44,7 @@ class DBService {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -60,6 +62,7 @@ class DBService {
         totalAmount REAL,
         months INTEGER,
         monthlyAmount REAL,
+        schedule TEXT,
         dueDay INTEGER,
         dueDate TEXT
       )
@@ -89,6 +92,10 @@ class DBService {
       await db.execute(
         "UPDATE debts SET dueDay = CAST(strftime('%d', dueDate) AS INTEGER) WHERE dueDate IS NOT NULL",
       );
+    }
+
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE debts ADD COLUMN schedule TEXT');
     }
   }
 
@@ -125,6 +132,7 @@ class DBService {
     required double totalAmount,
     required int months,
     required double monthlyAmount,
+    required List<double>? monthlySchedule,
     required int dueDay,
     required DateTime dueDate,
   }) async {
@@ -137,6 +145,9 @@ class DBService {
         'totalAmount': totalAmount,
         'months': months,
         'monthlyAmount': monthlyAmount,
+        'schedule': monthlySchedule == null
+            ? null
+            : jsonEncode(monthlySchedule),
         'dueDay': dueDay,
         'dueDate': dueDate.toIso8601String(),
       },

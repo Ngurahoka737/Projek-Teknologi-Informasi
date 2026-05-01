@@ -22,6 +22,11 @@ class DebtDetailScreen extends ConsumerWidget {
     final dateFormat = DateFormat('dd MMM yyyy', 'id_ID');
 
     final bool isPaidOff = debt.remaining <= 0;
+    final hasSchedule =
+        debt.monthlySchedule != null && debt.monthlySchedule!.isNotEmpty;
+    final monthlyLabel = hasSchedule
+        ? 'Bervariasi (avg ${rupiah.format(debt.monthlyAverage)})'
+        : rupiah.format(debt.monthlyAmount);
 
     return Scaffold(
       appBar: AppBar(
@@ -147,7 +152,7 @@ class DebtDetailScreen extends ConsumerWidget {
                     _item(
                       Icons.payments_outlined,
                       "Cicilan / bulan",
-                      rupiah.format(debt.monthlyAmount),
+                      monthlyLabel,
                     ),
 
                     const Divider(),

@@ -88,9 +88,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final profileState = ref.watch(profileControllerProvider);
     final activeDebts = debts.where((d) => d.remaining > 0).toList();
 
-    final totalAllDebt = debts.fold(0.0, (sum, item) => sum + item.totalAmount);
-    final totalAllPaid = debts.fold(0.0, (sum, item) => sum + item.totalPaid);
-    final totalAllRemaining = debts.fold(
+    final totalAllDebt = activeDebts.fold(
+      0.0,
+      (sum, item) => sum + item.totalAmount,
+    );
+    final totalAllPaid = activeDebts.fold(
+      0.0,
+      (sum, item) => sum + item.totalPaid,
+    );
+    final totalAllRemaining = activeDebts.fold(
       0.0,
       (sum, item) => sum + item.remaining,
     );

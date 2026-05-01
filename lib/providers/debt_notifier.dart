@@ -38,6 +38,7 @@ class DebtNotifier extends StateNotifier<List<DebtModel>> {
         title: debt.title,
         months: debt.months,
         monthlyAmount: debt.monthlyAmount,
+        monthlySchedule: debt.monthlySchedule,
         dueDay: debt.dueDay,
         dueDate: debt.dueDate,
         payments: payments,
@@ -109,15 +110,24 @@ class DebtNotifier extends StateNotifier<List<DebtModel>> {
     required String title,
     required int months,
     required double monthlyAmount,
+    List<double>? monthlySchedule,
     required int dueDay,
     required DateTime dueDate,
   }) async {
     await _ensureUserContext();
-    final totalAmount = months * monthlyAmount;
+    final normalizedMonthlyAmount =
+        monthlySchedule != null && monthlySchedule.isNotEmpty
+        ? monthlySchedule.fold(0.0, (sum, item) => sum + item) /
+              monthlySchedule.length
+        : monthlyAmount;
+    final totalAmount = monthlySchedule != null && monthlySchedule.isNotEmpty
+        ? monthlySchedule.fold(0.0, (sum, item) => sum + item)
+        : months * monthlyAmount;
     final newDebt = DebtModel(
       title: title,
       months: months,
-      monthlyAmount: monthlyAmount,
+      monthlyAmount: normalizedMonthlyAmount,
+      monthlySchedule: monthlySchedule,
       dueDay: dueDay,
       dueDate: dueDate,
     );
@@ -127,7 +137,8 @@ class DebtNotifier extends StateNotifier<List<DebtModel>> {
       id: debtId,
       title: title,
       months: months,
-      monthlyAmount: monthlyAmount,
+      monthlyAmount: normalizedMonthlyAmount,
+      monthlySchedule: monthlySchedule,
       dueDay: dueDay,
       dueDate: dueDate,
     );
@@ -196,11 +207,19 @@ class DebtNotifier extends StateNotifier<List<DebtModel>> {
     required String title,
     required int months,
     required double monthlyAmount,
+    List<double>? monthlySchedule,
     required int dueDay,
     required DateTime dueDate,
   }) async {
     await _ensureUserContext();
-    final totalAmount = months * monthlyAmount;
+    final normalizedMonthlyAmount =
+        monthlySchedule != null && monthlySchedule.isNotEmpty
+        ? monthlySchedule.fold(0.0, (sum, item) => sum + item) /
+              monthlySchedule.length
+        : monthlyAmount;
+    final totalAmount = monthlySchedule != null && monthlySchedule.isNotEmpty
+        ? monthlySchedule.fold(0.0, (sum, item) => sum + item)
+        : months * monthlyAmount;
     final debt = state.firstWhere((item) => item.id == id);
     if (totalAmount < debt.totalPaid) {
       throw Exception(
@@ -213,7 +232,8 @@ class DebtNotifier extends StateNotifier<List<DebtModel>> {
       title: title,
       totalAmount: totalAmount,
       months: months,
-      monthlyAmount: monthlyAmount,
+      monthlyAmount: normalizedMonthlyAmount,
+      monthlySchedule: monthlySchedule,
       dueDay: dueDay,
       dueDate: dueDate,
     );
@@ -223,7 +243,8 @@ class DebtNotifier extends StateNotifier<List<DebtModel>> {
         id: id,
         title: title,
         months: months,
-        monthlyAmount: monthlyAmount,
+        monthlyAmount: normalizedMonthlyAmount,
+        monthlySchedule: monthlySchedule,
         dueDay: dueDay,
         dueDate: dueDate,
       );

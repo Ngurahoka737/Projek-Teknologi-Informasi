@@ -34,6 +34,11 @@ class FirestoreService {
       final parsedDueDate = dueDateRaw != null && dueDateRaw.isNotEmpty
           ? DateTime.parse(dueDateRaw)
           : DateTime.now();
+      final scheduleRaw = data['schedule'];
+      List<double>? schedule;
+      if (scheduleRaw is List) {
+        schedule = scheduleRaw.map((e) => (e as num).toDouble()).toList();
+      }
 
       debts.add(
         DebtModel(
@@ -44,6 +49,7 @@ class FirestoreService {
               (data['monthlyAmount'] as num?)?.toDouble() ??
               (data['totalAmount'] as num?)?.toDouble() ??
               0,
+          monthlySchedule: schedule,
           dueDay: (data['dueDay'] as int?) ?? parsedDueDate.day,
           dueDate: parsedDueDate,
           payments: payments,
@@ -88,6 +94,7 @@ class FirestoreService {
       'totalAmount': debt.totalAmount,
       'months': debt.months,
       'monthlyAmount': debt.monthlyAmount,
+      'schedule': debt.monthlySchedule,
       'dueDay': debt.dueDay,
       'dueDate': debt.dueDate.toIso8601String(),
       'updatedAt': FieldValue.serverTimestamp(),

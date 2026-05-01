@@ -4,16 +4,36 @@ import 'package:intl/intl.dart';
 
 import '../data/models/debt_model.dart';
 
-class DebtMonthlyChart extends StatelessWidget {
+enum PeriodType {
+  sixMonths(6, '6 bulan'),
+  oneYear(12, '1 tahun'),
+  threeYears(36, '3 tahun'),
+  fiveYears(60, '5 tahun'),
+  tenYears(120, '10 tahun');
+
+  final int months;
+  final String label;
+
+  const PeriodType(this.months, this.label);
+}
+
+class DebtMonthlyChart extends StatefulWidget {
   const DebtMonthlyChart({super.key, required this.debts});
 
   final List<DebtModel> debts;
 
   @override
+  State<DebtMonthlyChart> createState() => _DebtMonthlyChartState();
+}
+
+class _DebtMonthlyChartState extends State<DebtMonthlyChart> {
+  PeriodType _selectedPeriod = PeriodType.sixMonths;
+
+  @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final buckets = _buildBuckets(debts);
+    final buckets = _buildBuckets(widget.debts, _selectedPeriod.months);
     final maxValue = buckets.fold<double>(0, (sum, item) {
       if (item.total > sum) return item.total;
       return sum;
@@ -42,99 +62,45 @@ class DebtMonthlyChart extends StatelessWidget {
                 ),
               ),
               Text(
-                '6 bulan ke depan',
+                _selectedPeriod.label,
                 style: textTheme.bodySmall?.copyWith(
                   color: const Color(0xff6b7280),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 190,
-            child: buckets.isEmpty
-                ? _emptyChart(textTheme, colors)
-                : BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      maxY: maxY,
-                      minY: 0,
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        horizontalInterval: maxY / 4,
-                        getDrawingHorizontalLine: (value) {
-                          return FlLine(
-                            color: const Color(0xffe5e7eb),
-                            strokeWidth: 1,
-                          );
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: PeriodType.values
+                  .map(
+                    (period) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(period.label),
+                        selected: _selectedPeriod == period,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _selectedPeriod = period;
+                            });
+                          }
                         },
                       ),
-                      borderData: FlBorderData(show: false),
-                      titlesData: FlTitlesData(
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            interval: maxY / 4,
-                            getTitlesWidget: (value, meta) {
-                              return Text(
-                                _shortCompact(value),
-                                style: textTheme.labelSmall?.copyWith(
-                                  color: const Color(0xff6b7280),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              final index = value.toInt();
-                              if (index < 0 || index >= buckets.length) {
-                                return const SizedBox.shrink();
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Text(
-                                  buckets[index].label,
-                                  style: textTheme.labelSmall?.copyWith(
-                                    color: const Color(0xff6b7280),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      barGroups: List.generate(buckets.length, (index) {
-                        final item = buckets[index];
-                        return BarChartGroupData(
-                          x: index,
-                          barRods: [
-                            BarChartRodData(
-                              toY: item.total,
-                              color: colors.primary,
-                              width: 14,
-                              borderRadius: BorderRadius.circular(10),
-                              backDrawRodData: BackgroundBarChartRodData(
-                                show: true,
-                                toY: maxY,
-                                color: colors.primary.withOpacity(0.08),
-                              ),
-                            ),
-                          ],
-                        );
-                      }),
                     ),
-                  ),
+                  )
+                  .toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240),
+              child: buckets.isEmpty
+                  ? _emptyChart(textTheme, colors)
+                  : _buildLineChart(buckets, maxY, colors, textTheme),
+            ),
           ),
         ],
       ),
@@ -142,20 +108,152 @@ class DebtMonthlyChart extends StatelessWidget {
   }
 
   Widget _emptyChart(TextTheme textTheme, ColorScheme colors) {
+    final message = _selectedPeriod == PeriodType.sixMonths
+        ? 'Belum ada cicilan di 6 bulan ke depan'
+        : 'Belum ada cicilan di ${_selectedPeriod.label} ke depan';
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.show_chart,
-            color: colors.primary.withOpacity(0.4),
+            color: colors.primary.withValues(alpha: 0.4),
             size: 40,
           ),
           const SizedBox(height: 8),
           Text(
-            'Belum ada cicilan di 6 bulan ke depan',
+            message,
             style: textTheme.bodySmall?.copyWith(
               color: const Color(0xff6b7280),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLineChart(
+    List<_MonthBucket> buckets,
+    double maxY,
+    ColorScheme colors,
+    TextTheme textTheme,
+  ) {
+    final spots = buckets.asMap().entries.map((entry) {
+      return FlSpot(entry.key.toDouble(), entry.value.total);
+    }).toList();
+
+    return LineChart(
+      LineChartData(
+        lineTouchData: LineTouchData(
+          enabled: true,
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots
+                  .map((spot) {
+                    final index = spot.x.toInt();
+                    if (index < 0 || index >= buckets.length) {
+                      return null;
+                    }
+                    return LineTooltipItem(
+                      _shortCompact(spot.y),
+                      TextStyle(
+                        color: colors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    );
+                  })
+                  .whereType<LineTooltipItem>()
+                  .toList();
+            },
+          ),
+          handleBuiltInTouches: true,
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          drawHorizontalLine: true,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(color: const Color(0xffe5e7eb), strokeWidth: 1);
+          },
+          horizontalInterval: maxY / 4,
+        ),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 45,
+              interval: maxY / 4,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  _shortCompact(value),
+                  style: textTheme.labelSmall?.copyWith(
+                    color: const Color(0xff6b7280),
+                  ),
+                );
+              },
+            ),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < 0 || index >= buckets.length) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    buckets[index].label,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: const Color(0xff6b7280),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        maxY: maxY,
+        minY: 0,
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            curveSmoothness: 0.4,
+            color: colors.primary,
+            barWidth: 3,
+            isStrokeCapRound: true,
+            dotData: FlDotData(
+              show: spots.length <= 12,
+              getDotPainter: (spot, percent, barData, index) {
+                return FlDotCirclePainter(
+                  radius: 4,
+                  color: colors.primary,
+                  strokeColor: Colors.white,
+                  strokeWidth: 2,
+                );
+              },
+            ),
+            belowBarData: BarAreaData(
+              show: true,
+              color: colors.primary.withValues(alpha: 0.15),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  colors.primary.withValues(alpha: 0.25),
+                  colors.primary.withValues(alpha: 0.02),
+                ],
+              ),
             ),
           ),
         ],
@@ -176,13 +274,13 @@ class DebtMonthlyChart extends StatelessWidget {
     return value.toStringAsFixed(0);
   }
 
-  List<_MonthBucket> _buildBuckets(List<DebtModel> debts) {
+  List<_MonthBucket> _buildBuckets(List<DebtModel> debts, int numberOfMonths) {
     if (debts.isEmpty) return [];
 
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, 1);
-    final end = DateTime(start.year, start.month + 6, 1);
-    final months = List.generate(6, (index) {
+    final end = DateTime(start.year, start.month + numberOfMonths, 1);
+    final months = List.generate(numberOfMonths, (index) {
       final date = DateTime(start.year, start.month + index, 1);
       return _MonthBucket(date: date, total: 0, label: _monthLabel(date));
     });
@@ -197,7 +295,7 @@ class DebtMonthlyChart extends StatelessWidget {
 
         final index = _monthDiff(start, date);
         if (index >= 0 && index < months.length) {
-          months[index].total += debt.monthlyAmount;
+          months[index].total += debt.amountForIndex(i);
         }
       }
     }

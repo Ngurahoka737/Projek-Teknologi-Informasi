@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'assistant/assistant_screen.dart';
 import 'home/home_screen.dart';
 import 'history/history_screen.dart';
 import 'profile/profile_screen.dart';
@@ -16,6 +17,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _pages = [
     const HomeScreen(),
     const HistoryScreen(),
+    const AssistantScreen(),
     const ProfileScreen(),
   ];
 
@@ -36,6 +38,10 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.check_circle),
             label: "Lunas",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.smart_toy),
+            label: "Asisten",
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profil"),
         ],

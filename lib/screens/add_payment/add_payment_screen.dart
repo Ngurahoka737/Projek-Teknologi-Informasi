@@ -48,7 +48,10 @@ class _AddPaymentScreenState extends ConsumerState<AddPaymentScreen> {
         throw Exception("Pilih minimal 1 bulan untuk dibayar");
       }
 
-      final totalToPay = selectedMonths.length * debt.monthlyAmount;
+      final totalToPay = selectedMonths.fold(
+        0.0,
+        (sum, item) => sum + item.amount,
+      );
       if (totalToPay > debt.remaining) {
         throw Exception("Nominal melebihi sisa hutang");
       }
@@ -58,7 +61,7 @@ class _AddPaymentScreenState extends ConsumerState<AddPaymentScreen> {
             .read(debtNotifierProvider.notifier)
             .addPayment(
               debtId: widget.debtId,
-              amount: debt.monthlyAmount,
+              amount: item.amount,
               date: item.date,
             );
       }
@@ -199,7 +202,7 @@ class _AddPaymentScreenState extends ConsumerState<AddPaymentScreen> {
                                     });
                                   },
                             title: Text(monthFormat.format(item.date)),
-                            subtitle: Text(rupiah.format(debt.monthlyAmount)),
+                            subtitle: Text(rupiah.format(item.amount)),
                             secondary: Icon(
                               isPaid ? Icons.check_circle : Icons.schedule,
                               color: isPaid ? Colors.green : Colors.orange,
@@ -266,7 +269,11 @@ class _AddPaymentScreenState extends ConsumerState<AddPaymentScreen> {
 
     return List.generate(debt.months, (index) {
       final date = DateTime(baseDate.year, baseDate.month + index, safeDay);
-      return _MonthItem(date: date, key: _monthKey(date));
+      return _MonthItem(
+        date: date,
+        key: _monthKey(date),
+        amount: debt.amountForIndex(index),
+      );
     });
   }
 
@@ -281,8 +288,9 @@ class _AddPaymentScreenState extends ConsumerState<AddPaymentScreen> {
 }
 
 class _MonthItem {
-  _MonthItem({required this.date, required this.key});
+  _MonthItem({required this.date, required this.key, required this.amount});
 
   final DateTime date;
   final String key;
+  final double amount;
 }

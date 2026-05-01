@@ -24,10 +24,12 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
 
   final _monthsController = TextEditingController();
   final _monthlyAmountController = TextEditingController();
+  final List<TextEditingController> _scheduleControllers = [];
 
   final amountFormat = NumberFormat.decimalPattern('id_ID');
 
   int _dueDay = 1;
+  bool _isFixedSchedule = true;
 
   bool _isLoading = false;
 
@@ -37,14 +39,51 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
   void initState() {
     super.initState();
 
+    _monthsController.addListener(_handleMonthsChanged);
+
     if (isEdit) {
       _titleController.text = widget.debt!.title;
 
       _monthsController.text = widget.debt!.months.toString();
-      _monthlyAmountController.text = amountFormat.format(
-        widget.debt!.monthlyAmount.round(),
-      );
+      if (widget.debt!.monthlySchedule != null &&
+          widget.debt!.monthlySchedule!.isNotEmpty) {
+        _isFixedSchedule = false;
+        _ensureScheduleControllers(widget.debt!.months);
+        final schedule = widget.debt!.monthlySchedule!;
+        for (var i = 0; i < _scheduleControllers.length; i++) {
+          final amount = i < schedule.length
+              ? schedule[i]
+              : widget.debt!.monthlyAverage;
+          _scheduleControllers[i].text = amountFormat.format(amount.round());
+        }
+        _monthlyAmountController.text = amountFormat.format(
+          widget.debt!.monthlyAverage.round(),
+        );
+      } else {
+        _isFixedSchedule = true;
+        _monthlyAmountController.text = amountFormat.format(
+          widget.debt!.monthlyAmount.round(),
+        );
+      }
       _dueDay = widget.debt!.dueDay;
+    }
+  }
+
+  void _handleMonthsChanged() {
+    if (_isFixedSchedule) return;
+    final months = int.tryParse(_monthsController.text) ?? 0;
+    if (months <= 0) return;
+    setState(() {
+      _ensureScheduleControllers(months);
+    });
+  }
+
+  void _ensureScheduleControllers(int count) {
+    while (_scheduleControllers.length < count) {
+      _scheduleControllers.add(TextEditingController());
+    }
+    while (_scheduleControllers.length > count) {
+      _scheduleControllers.removeLast().dispose();
     }
   }
 
@@ -112,9 +151,21 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
     try {
       final title = _titleController.text.trim();
       final months = int.tryParse(_monthsController.text) ?? 0;
-      final monthlyAmount = parseFormattedNumber(_monthlyAmountController.text);
+      List<double>? schedule;
+      var monthlyAmount = parseFormattedNumber(_monthlyAmountController.text);
+      if (!_isFixedSchedule) {
+        schedule = _scheduleControllers
+            .map((controller) => parseFormattedNumber(controller.text))
+            .toList();
+        if (schedule.isNotEmpty) {
+          final total = schedule.fold(0.0, (sum, item) => sum + item);
+          monthlyAmount = total / schedule.length;
+        }
+      }
       final dueDate = _nextDueDate(_dueDay);
-      final totalAmount = months * monthlyAmount;
+      final totalAmount = schedule != null && schedule.isNotEmpty
+          ? schedule.fold(0.0, (sum, item) => sum + item)
+          : months * monthlyAmount;
 
       // ======================
       // VALIDASI EDIT
@@ -143,6 +194,7 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
               title: title,
               months: months,
               monthlyAmount: monthlyAmount,
+              monthlySchedule: schedule,
               dueDay: _dueDay,
               dueDate: dueDate,
             );
@@ -153,6 +205,7 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
               title: title,
               months: months,
               monthlyAmount: monthlyAmount,
+              monthlySchedule: schedule,
               dueDay: _dueDay,
               dueDate: dueDate,
             );
@@ -188,9 +241,13 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
 
   @override
   void dispose() {
+    _monthsController.removeListener(_handleMonthsChanged);
     _titleController.dispose();
     _monthsController.dispose();
     _monthlyAmountController.dispose();
+    for (final controller in _scheduleControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -269,30 +326,101 @@ class _AddDebtScreenState extends ConsumerState<AddDebtScreen> {
                       const SizedBox(height: 16),
 
                       // ==================
-                      // CICILAN PER BULAN
+                      // JENIS CICILAN
                       // ==================
-                      TextFormField(
-                        controller: _monthlyAmountController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [ThousandsSeparatorInputFormatter()],
-                        decoration: const InputDecoration(
-                          labelText: "Cicilan per bulan",
-                          prefixIcon: Icon(Icons.payments),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Nominal cicilan wajib diisi";
-                          }
-
-                          final amount = parseFormattedNumber(value);
-
-                          if (amount <= 0) {
-                            return "Nominal harus lebih dari 0";
-                          }
-
-                          return null;
-                        },
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text("Sama tiap bulan"),
+                            selected: _isFixedSchedule,
+                            onSelected: (value) {
+                              if (!value) return;
+                              setState(() {
+                                _isFixedSchedule = true;
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 12),
+                          ChoiceChip(
+                            label: const Text("Berbeda"),
+                            selected: !_isFixedSchedule,
+                            onSelected: (value) {
+                              if (!value) return;
+                              final months =
+                                  int.tryParse(_monthsController.text) ?? 0;
+                              setState(() {
+                                _isFixedSchedule = false;
+                                if (months > 0) {
+                                  _ensureScheduleControllers(months);
+                                }
+                              });
+                            },
+                          ),
+                        ],
                       ),
+
+                      const SizedBox(height: 16),
+
+                      if (_isFixedSchedule)
+                        TextFormField(
+                          controller: _monthlyAmountController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [ThousandsSeparatorInputFormatter()],
+                          decoration: const InputDecoration(
+                            labelText: "Cicilan per bulan",
+                            prefixIcon: Icon(Icons.payments),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return "Nominal cicilan wajib diisi";
+                            }
+
+                            final amount = parseFormattedNumber(value);
+
+                            if (amount <= 0) {
+                              return "Nominal harus lebih dari 0";
+                            }
+
+                            return null;
+                          },
+                        )
+                      else
+                        Column(
+                          children: List.generate(
+                            _scheduleControllers.length,
+                            (index) => Padding(
+                              padding: EdgeInsets.only(
+                                bottom: index == _scheduleControllers.length - 1
+                                    ? 0
+                                    : 12,
+                              ),
+                              child: TextFormField(
+                                controller: _scheduleControllers[index],
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  ThousandsSeparatorInputFormatter(),
+                                ],
+                                decoration: InputDecoration(
+                                  labelText: "Cicilan bulan ${index + 1}",
+                                  prefixIcon: const Icon(Icons.payments),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Nominal cicilan wajib diisi";
+                                  }
+
+                                  final amount = parseFormattedNumber(value);
+
+                                  if (amount <= 0) {
+                                    return "Nominal harus lebih dari 0";
+                                  }
+
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
 
                       const SizedBox(height: 16),
 
